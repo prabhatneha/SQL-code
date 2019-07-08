@@ -1,0 +1,21 @@
+select round(((sum(case when completed = 1 then '1' else '0' end))/count(*))*100) as calloverallpercent ,
+
+round(((sum(case when completed = 0 then '1' else '0' end))/count(*))*100) as chatoverpercent,
+Topic,
+Doctor, patid,
+sum(case when completed = 1 then '1' else '0' end) as calls,
+sum(case when completed = 0 then '1' else '0' end) as chats from 
+
+(
+select id,patient as patid,topic as Topic,doctor as Doctor,
+(case when id in (select cntid  from (
+select cntid from (
+select cntid,sum(diff) as calduration from (
+select cntid,Callstatus,diff from (
+select consultationId as cntid,status as Callstatus,timestampdiff(minute,createdAt,updatedAt) as diff from exotel_docsapp.calls_table where ((type is NULL and patientId is not null and doctorId is not null and consultationId!=0 and status = 'completed' and consultationId is not null and docsappCallType='DCB' and patientId!=0 and doctorId!=0) or (type='DCB' and status = 'completed') or (docsappCallType='DCB') or (docsappCallType='Rx Validation dr call' and status='completed')) and createdAt >= '{{for_date}}' and createdAt <= '{{for_date1}}'  
+UNION
+select consultationId as cntid,DialCallStatus Callstatus,diff/60 as diff from (select consultationId,DialCallStatus,cast(DialCallDuration as unsigned) as diff from exotel_docsapp.InboundCalls where DialCallStatus = 'completed' and telemerApplicationId is null and consultationId is not null and createdAt >= '{{for_date}}' and createdAt <= '{{for_date1}}' )Q order by cntid) Q) W group by cntid) temp where calduration > 2) temp1) then '1' else '0' end) completed
+from node.Consults where topic not in ('Cardiac Lab Analysis','Prescription Validation','Lab Report Analysis','Life Style Advice') and topic not like '%self test%' and acceptedconsultation is not null and reassign!= 1 and valid =1  and followup = 0 and createdAt >= '{{for_date}}' and createdAt <= '{{for_date1}}' and Doctor='{{dr_id}}' )t2 group by Topic,Doctor,patid
+
+
+
